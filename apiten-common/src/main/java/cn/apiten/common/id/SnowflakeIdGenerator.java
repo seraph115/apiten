@@ -27,6 +27,9 @@ public class SnowflakeIdGenerator {
                 throw new IllegalStateException("clock moved backwards " + offset + "ms");
             }
             while ((ts = System.currentTimeMillis()) < lastTimestamp) {
+                if (lastTimestamp - ts > BACKWARD_TOLERANCE_MS) {
+                    throw new IllegalStateException("clock moved backwards " + (lastTimestamp - ts) + "ms");
+                }
                 Thread.onSpinWait();
             }
         }
@@ -34,6 +37,9 @@ public class SnowflakeIdGenerator {
             sequence = (sequence + 1) & SEQ_MASK;
             if (sequence == 0) {
                 while ((ts = System.currentTimeMillis()) <= lastTimestamp) {
+                    if (lastTimestamp - ts > BACKWARD_TOLERANCE_MS) {
+                        throw new IllegalStateException("clock moved backwards " + (lastTimestamp - ts) + "ms");
+                    }
                     Thread.onSpinWait();
                 }
             }
