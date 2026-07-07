@@ -1,6 +1,6 @@
 # 征信数据服务 API 平台（API-TEN）产品需求设计（PRD）
 
-- 文档版本：v1.0
+- 文档版本：v1.2（v1.1 移除旧系统迁移、新增技术架构；v1.2 基座框架定为 yudao-cloud、MQ 定为 Kafka）
 - 编写日期：2026-07-07
 - 范围口径：全量详细设计（一期 + 二期）
 - 参考资料：《2026-07-07-新API系统核心功能需求文档.md》、API-TEN 演示原型截图、旧系统（CISP/EDH）能力盘点
@@ -681,45 +681,48 @@ score = w1·价格分 + w2·质量分 + w3·时延分 + w4·配额分
 
 ### 12.1 总体选型
 
-- **后端**：Java 21（虚拟线程）+ Spring Boot 3.x + **Spring Cloud Alibaba** 微服务体系。
-- **前端**：Vue 3 + TypeScript + Vite + Element Plus（基于 vue-vben-admin 中后台模板）。
-- **数据与中间件**：MySQL 8、Redis、RocketMQ、Nacos、Sentinel、ShardingSphere-JDBC、XXL-Job、Seata（仅低频账务场景可选）、SkyWalking、Prometheus/Grafana。
+- **基座框架**：**yudao-cloud**（芋道，ruoyi-vue-pro 的 Spring Cloud Alibaba 微服务版，https://github.com/YunaiV/yudao-cloud）。直接复用其系统管理（用户/角色/菜单/按钮权限/操作日志/登录日志/字典/参数配置，即 PRD §6.1 全部能力）、网关、MQ 抽象、代码生成、监控接入等基础设施；业务服务按 yudao 模块规范新建。
+- **后端**：Java 21（虚拟线程）+ Spring Boot 3.x + Spring Cloud Alibaba（Nacos/Sentinel/OpenFeign/Gateway）+ MyBatis-Plus + Redisson。
+- **前端**：yudao-ui-admin-vue3（Vue 3 + TypeScript + Vite + Element Plus），复用其 RBAC 动态菜单、字典、CRUD 配套页面。
+- **数据与中间件**：MySQL 8、Redis、**Kafka**（经 yudao MQ 抽象层接入，流水削峰/异步任务/回调重推）、Nacos、Sentinel、ShardingSphere-JDBC（流水按月分表，自行引入）、XXL-Job、SkyWalking、Prometheus/Grafana。
 
-### 12.2 微服务划分（Spring Cloud Alibaba）
+### 12.2 微服务划分（yudao-cloud 模块规范）
 
-| 服务 | 平面 | 职责 | 关键技术 |
+| 服务/模块 | 平面 | 职责 | 关键技术 |
 |---|---|---|---|
-| api-gateway | 数据面 | 对外统一入口：签名/IP/防重放校验、Sentinel 限流、雪花 ID 生成、幂等检查、转发 | Spring Cloud Gateway |
-| openapi-service | 数据面 | 调用编排：参数校验、路由决策（内嵌引擎 + 本地配置快照）、切换链执行、计费触发、统一响应组装 | Spring Boot + 虚拟线程、OpenFeign |
-| adapter-service | 数据面 | 统一 Provider：入参/出参/应答码映射执行、供应商调用（HTTP 一期，RPC/DB/文件插件二期）、健康探活 | 虚拟线程、按数据源连接池隔离 |
-| route-service | 控制面 | 路由/分流/切换链/选源策略配置管理、指标聚合与选源打分参数计算、配置快照发布与版本回滚 | Nacos 配置发布、Redis Pub/Sub 缓存刷新 |
-| billing-service | 控制面 | 计费判定、余额扣减（本地强事务 + 乐观锁）、计费流水、账户/充值/财务流水/账务调整 | MySQL 本地事务、冲正补偿 |
-| flow-service | 数据面 | 流水异步消费落库、机构/数据源流水查询、全链路视图 | RocketMQ 消费、ShardingSphere 按月分表 |
-| admin-service | 管理面 | 管理后台聚合：系统管理、数据源/产品/机构/参数配置 CRUD、RBAC、审计 | Spring Boot MVC + Sa-Token |
-| job-service | 管理面 | 日/月账单、成本统计、对账、归档、邮件报表批任务 | XXL-Job，幂等可重跑 |
+| yudao-gateway（扩展） | 数据面 | 对外统一入口：在 yudao 网关上扩展签名/IP/防重放校验过滤器、Sentinel 限流、雪花 ID 生成、幂等检查 | Spring Cloud Gateway |
+| yudao-module-openapi | 数据面 | 调用编排：参数校验、路由决策（内嵌引擎 + 本地配置快照）、切换链执行、计费触发、统一响应组装 | 虚拟线程、OpenFeign |
+| yudao-module-adapter | 数据面 | 统一 Provider：入参/出参/应答码映射执行、供应商调用（HTTP 一期，RPC/DB/文件插件二期）、健康探活 | 虚拟线程、按数据源连接池隔离 |
+| yudao-module-route | 控制面 | 路由/分流/切换链/选源策略配置管理、指标聚合与选源打分参数计算、配置快照发布与版本回滚 | Nacos 配置发布、Redis Pub/Sub 缓存刷新 |
+| yudao-module-billing | 控制面 | 计费判定、余额扣减（本地强事务 + 乐观锁）、计费流水、账户/充值/财务流水/账务调整 | MySQL 本地事务、冲正补偿 |
+| yudao-module-flow | 数据面 | 流水异步消费落库、机构/数据源流水查询、全链路视图 | Kafka 消费、ShardingSphere 按月分表 |
+| yudao-module-system（复用） | 管理面 | 系统管理全部能力：用户、角色、菜单、按钮权限、操作日志、登录日志、字典 | yudao 自带，零开发 |
+| yudao-module-apiadmin | 管理面 | 业务管理后台：数据源/产品/机构/账户/参数配置 CRUD、审计、报表查询 | MyBatis-Plus + yudao CRUD 脚手架/代码生成 |
+| yudao-module-report | 管理面 | 日/月账单、成本统计、对账、归档、邮件报表批任务 | XXL-Job，幂等可重跑 |
 
-调用关系（同步主链路）：api-gateway → openapi-service → adapter-service →（上游数据源）；openapi-service → billing-service（扣费，OpenFeign 同步 + 幂等）。流水落库与通知推送走 RocketMQ 异步。
+调用关系（同步主链路）：yudao-gateway → openapi → adapter →（上游数据源）；openapi → billing（扣费，OpenFeign 同步 + 幂等）。流水落库与通知推送经 yudao MQ 抽象层走 **Kafka** 异步。
 
 ### 12.3 关键技术决策
 
 1. **主调用链不引入分布式事务**：扣费由 billing-service 本地事务完成；调用最终失败场景走自动冲正（补偿模式）；Seata 仅用于低频后台跨服务账务操作（可选）。
-2. **配置快照下发**：route-service 发布配置版本 → Nacos/Redis Pub-Sub 通知 → openapi/adapter 本地缓存热更新，调用链路零数据库访问。
+2. **配置快照下发**：yudao-module-route 发布配置版本 → Nacos/Redis Pub-Sub 通知 → openapi/adapter 本地缓存热更新，调用链路零数据库访问。
 3. **限流分层**：网关层 Sentinel（机构/账号维度）+ openapi 内嵌并发信号量（产品维度）+ adapter 上游配额控制。
 4. **虚拟线程**：openapi/adapter 为 IO 密集服务，Java 21 虚拟线程以同步编码获得高并发吞吐，避免响应式编程复杂度。
 5. **雪花 ID 自研**：节点 ID 由 Nacos/DB 租约分配，时钟回拨保护见 §4.1.5，无需引入 Leaf 等外部组件。
+6. **基座复用边界**：yudao-cloud 的系统管理、操作日志、代码生成直接复用（本项目按单租户模式关闭多租户）；数据面/控制面服务只依赖其 framework starter（web/mybatis/redis/mq），商城、CRM、工作流等无关业务模块不启用。
 
 ### 12.4 前端架构
 
-- Vue 3 + TypeScript + Vite + Pinia + Vue Router，基于 vue-vben-admin 模板起步。
-- Element Plus 组件库；ECharts 运营看板与监控图表。
-- 动态菜单与按钮级权限直接对接后台 RBAC 模型。
+- **yudao-ui-admin-vue3**：Vue 3 + TypeScript + Vite + Pinia + Element Plus，随基座框架自带。
+- 直接复用：RBAC 动态菜单/按钮权限、字典组件、CRUD 列表/表单脚手架（配合代码生成器生成各管理模块基础页面）、登录与安全。
+- ECharts 运营看板与监控图表。
 - **Schema 化动态表单引擎**：数据源适配映射、计费模板阶梯区间、路由条件等高度动态的配置界面由 JSON Schema 驱动渲染，降低表单维护成本。
 - 路由模拟器、联调测试台、流水全链路视图为重交互页面，独立组件模块开发。
 
 ### 12.5 部署拓扑
 
 - Kubernetes 部署（一期资源有限可 Docker Compose 双节点起步）；数据面服务（gateway/openapi/adapter/flow）无状态水平扩展。
-- 中间件：MySQL 主从、Redis 哨兵/集群、RocketMQ 集群、Nacos 集群。
+- 中间件：MySQL 主从、Redis 哨兵/集群、Kafka 集群、Nacos 集群。
 - 可观测：SkyWalking（分布式链路）、Prometheus + Grafana（指标看板）、告警对接邮件/IM。
 
 ---
