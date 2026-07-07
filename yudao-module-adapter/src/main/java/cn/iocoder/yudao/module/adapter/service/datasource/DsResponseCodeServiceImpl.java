@@ -8,6 +8,7 @@ import cn.iocoder.yudao.module.adapter.controller.admin.datasource.vo.DsResponse
 import cn.iocoder.yudao.module.adapter.controller.admin.datasource.vo.DsResponseCodePageReqVO;
 import cn.iocoder.yudao.module.adapter.controller.admin.datasource.vo.DsResponseCodeSaveReqVO;
 import cn.iocoder.yudao.module.adapter.dal.dataobject.datasource.DsResponseCodeDO;
+import cn.iocoder.yudao.module.adapter.dal.mysql.datasource.DataSourceMapper;
 import cn.iocoder.yudao.module.adapter.dal.mysql.datasource.DsResponseCodeMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +19,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
+import static cn.iocoder.yudao.module.adapter.enums.ErrorCodeConstants.DATA_SOURCE_NOT_EXISTS;
 import static cn.iocoder.yudao.module.adapter.enums.ErrorCodeConstants.DS_RESPONSE_CODE_DUPLICATE;
 import static cn.iocoder.yudao.module.adapter.enums.ErrorCodeConstants.DS_RESPONSE_CODE_NOT_EXISTS;
 
@@ -27,10 +29,13 @@ public class DsResponseCodeServiceImpl implements DsResponseCodeService {
 
     @Resource
     private DsResponseCodeMapper dsResponseCodeMapper;
+    @Resource
+    private DataSourceMapper dataSourceMapper;
 
     @Override
     public Long createDsResponseCode(DsResponseCodeSaveReqVO reqVO) {
         normalizeInterfaceId(reqVO);
+        validateDataSourceExists(reqVO.getDataSourceId());
         validateDuplicate(reqVO.getDataSourceId(), reqVO.getDsInterfaceId(), reqVO.getRawCode(), null);
         DsResponseCodeDO code = BeanUtils.toBean(reqVO, DsResponseCodeDO.class);
         code.setId(null);
@@ -42,6 +47,7 @@ public class DsResponseCodeServiceImpl implements DsResponseCodeService {
     public void updateDsResponseCode(DsResponseCodeSaveReqVO reqVO) {
         validateExists(reqVO.getId());
         normalizeInterfaceId(reqVO);
+        validateDataSourceExists(reqVO.getDataSourceId());
         validateDuplicate(reqVO.getDataSourceId(), reqVO.getDsInterfaceId(), reqVO.getRawCode(), reqVO.getId());
         dsResponseCodeMapper.updateById(BeanUtils.toBean(reqVO, DsResponseCodeDO.class));
     }
@@ -76,6 +82,10 @@ public class DsResponseCodeServiceImpl implements DsResponseCodeService {
                 .failureRawCodes(new LinkedHashMap<>())
                 .build();
         for (DsResponseCodeImportExcelVO row : list) {
+            if (dataSourceMapper.selectById(row.getDataSourceId()) == null) {
+                resp.getFailureRawCodes().put(row.getRawCode(), DATA_SOURCE_NOT_EXISTS.getMsg());
+                continue;
+            }
             Long ifId = row.getDsInterfaceId() == null ? 0L : row.getDsInterfaceId();
             DsResponseCodeDO exist = dsResponseCodeMapper.selectByScopeAndRawCode(
                     row.getDataSourceId(), ifId, row.getRawCode());
@@ -115,6 +125,12 @@ public class DsResponseCodeServiceImpl implements DsResponseCodeService {
             throw exception(DS_RESPONSE_CODE_NOT_EXISTS);
         }
         return code;
+    }
+
+    private void validateDataSourceExists(Long dataSourceId) {
+        if (dataSourceMapper.selectById(dataSourceId) == null) {
+            throw exception(DATA_SOURCE_NOT_EXISTS);
+        }
     }
 
     private void normalizeInterfaceId(DsResponseCodeSaveReqVO reqVO) {

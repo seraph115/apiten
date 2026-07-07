@@ -4,7 +4,9 @@ import cn.iocoder.yudao.framework.test.core.ut.BaseDbUnitTest;
 import cn.iocoder.yudao.module.adapter.controller.admin.datasource.vo.DsResponseCodeImportExcelVO;
 import cn.iocoder.yudao.module.adapter.controller.admin.datasource.vo.DsResponseCodeImportRespVO;
 import cn.iocoder.yudao.module.adapter.controller.admin.datasource.vo.DsResponseCodePageReqVO;
+import cn.iocoder.yudao.module.adapter.dal.dataobject.datasource.DataSourceDO;
 import cn.iocoder.yudao.module.adapter.dal.dataobject.datasource.DsResponseCodeDO;
+import cn.iocoder.yudao.module.adapter.dal.mysql.datasource.DataSourceMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Import;
 import jakarta.annotation.Resource;
@@ -17,10 +19,26 @@ class DsResponseCodeImportTest extends BaseDbUnitTest {
 
     @Resource
     private DsResponseCodeServiceImpl service;
+    @Resource
+    private DataSourceMapper dataSourceMapper;
 
-    private DsResponseCodeImportExcelVO row(String rawCode, String platformCode) {
+    private int dsSeq = 0;
+
+    private Long insertDataSource() {
+        DataSourceDO ds = new DataSourceDO();
+        ds.setDsCode(String.format("DS%06d", ++dsSeq));
+        ds.setName("测试源");
+        ds.setSourceType(1);
+        ds.setStatus(0);
+        ds.setEnvType(1);
+        ds.setProtocolType(1);
+        dataSourceMapper.insert(ds);
+        return ds.getId();
+    }
+
+    private DsResponseCodeImportExcelVO row(Long dsId, String rawCode, String platformCode) {
         DsResponseCodeImportExcelVO vo = new DsResponseCodeImportExcelVO();
-        vo.setDataSourceId(1L);
+        vo.setDataSourceId(dsId);
         vo.setDsInterfaceId(0L);
         vo.setRawCode(rawCode);
         vo.setSuccess("0000".equals(platformCode));
@@ -33,24 +51,27 @@ class DsResponseCodeImportTest extends BaseDbUnitTest {
 
     @Test
     void import_createsNewRows() {
+        Long dsId = insertDataSource();
         DsResponseCodeImportRespVO resp = service.importResponseCodes(
-                List.of(row("R01", "0000"), row("R02", "3001")), false);
+                List.of(row(dsId, "R01", "0000"), row(dsId, "R02", "3001")), false);
         assertThat(resp.getCreateRawCodes()).containsExactlyInAnyOrder("R01", "R02");
         assertThat(resp.getFailureRawCodes()).isEmpty();
     }
 
     @Test
     void import_duplicateWithoutUpdate_reportsFailure() {
-        service.importResponseCodes(List.of(row("DUP", "0000")), false);
-        DsResponseCodeImportRespVO resp = service.importResponseCodes(List.of(row("DUP", "3001")), false);
+        Long dsId = insertDataSource();
+        service.importResponseCodes(List.of(row(dsId, "DUP", "0000")), false);
+        DsResponseCodeImportRespVO resp = service.importResponseCodes(List.of(row(dsId, "DUP", "3001")), false);
         assertThat(resp.getCreateRawCodes()).isEmpty();
         assertThat(resp.getFailureRawCodes()).containsKey("DUP");
     }
 
     @Test
     void import_duplicateWithUpdate_updatesRow() {
-        service.importResponseCodes(List.of(row("UPD", "0000")), false);
-        DsResponseCodeImportRespVO resp = service.importResponseCodes(List.of(row("UPD", "3001")), true);
+        Long dsId = insertDataSource();
+        service.importResponseCodes(List.of(row(dsId, "UPD", "0000")), false);
+        DsResponseCodeImportRespVO resp = service.importResponseCodes(List.of(row(dsId, "UPD", "3001")), true);
         assertThat(resp.getUpdateRawCodes()).contains("UPD");
         List<DsResponseCodeDO> all = service.getExportList(new DsResponseCodePageReqVO());
         assertThat(all).anySatisfy(d -> {
@@ -58,5 +79,14 @@ class DsResponseCodeImportTest extends BaseDbUnitTest {
                 assertThat(d.getPlatformCode()).isEqualTo("3001");
             }
         });
+    }
+
+    @Test
+    void import_dataSourceNotExists_reportsFailure() {
+        DsResponseCodeImportRespVO resp = service.importResponseCodes(
+                List.of(row(999999L, "NODS", "0000")), false);
+        assertThat(resp.getCreateRawCodes()).isEmpty();
+        assertThat(resp.getFailureRawCodes()).containsKey("NODS");
+        assertThat(service.getExportList(new DsResponseCodePageReqVO())).isEmpty();
     }
 }
