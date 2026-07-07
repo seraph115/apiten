@@ -3,7 +3,7 @@
 spring:
   cloud:
     nacos:
-      server-addr: 127.0.0.1:8848 # Nacos 服务器地址
+      server-addr: 127.0.0.1:18848 # Nacos 服务器地址
       username: # Nacos 账号
       password: # Nacos 密码
       discovery: # 【配置中心】配置项
@@ -57,7 +57,7 @@ spring:
       primary: master
       datasource:
         master:
-          url: jdbc:mysql://127.0.0.1:3306/apiten_system?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true&rewriteBatchedStatements=true # MySQL Connector/J 8.X 连接的示例
+          url: jdbc:mysql://127.0.0.1:23306/apiten_system?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true&rewriteBatchedStatements=true # MySQL Connector/J 8.X 连接的示例
           #          url: jdbc:mysql://127.0.0.1:3306/ruoyi-vue-pro?useSSL=true&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&rewriteBatchedStatements=true # MySQL Connector/J 5.X 连接的示例
           #          url: jdbc:postgresql://127.0.0.1:5432/ruoyi-vue-pro # PostgreSQL 连接的示例
           #          url: jdbc:postgresql://127.0.0.1:5866/ruoyi-vue-pro # 瀚高 HighGo 连接的示例
@@ -74,7 +74,7 @@ spring:
         #          password: 123456 # 瀚高 HighGo 连接的示例
         slave: # 模拟从库，可根据自己需要修改
           lazy: true # 开启懒加载，保证启动速度
-          url: jdbc:mysql://127.0.0.1:3306/apiten_system?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true&rewriteBatchedStatements=true
+          url: jdbc:mysql://127.0.0.1:23306/apiten_system?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true&rewriteBatchedStatements=true
           username: root
           password: apiten123
 

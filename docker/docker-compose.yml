@@ -1,7 +1,8 @@
+name: apiten
 services:
   mysql:
     image: mysql:8.0
-    ports: ["3306:3306"]
+    ports: ["23306:3306"]
     environment:
       MYSQL_ROOT_PASSWORD: apiten123
     volumes:
@@ -12,7 +13,7 @@ services:
   nacos:
     image: nacos/nacos-server:v2.3.2
     platform: linux/amd64
-    ports: ["8848:8848", "9848:9848"]
+    ports: ["18848:8848", "19848:9848"]
     environment:
       MODE: standalone
   kafka:
