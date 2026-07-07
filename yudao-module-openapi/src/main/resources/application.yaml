@@ -3,10 +3,11 @@ server:
 spring:
   application:
     name: openapi-server
+  profiles:
+    active: local
   threads:
     virtual:
       enabled: true
-  cloud:
-    nacos:
-      discovery:
-        server-addr: 127.0.0.1:8848
+  config:
+    import:
+      - optional:classpath:application-${spring.profiles.active}.yaml # 加载【本地】配置

@@ -216,6 +216,13 @@ spring:
                 - Path=/admin-api/im/**
               filters:
                 - RewritePath=/admin-api/im/v3/api-docs, /v3/api-docs # 配置，保证转发到 /v3/api-docs
+            ## openapi-server 服务（apiten 对外网关路由）
+            - id: apiten-openapi # 路由的编号
+              uri: lb://openapi-server
+              predicates: # 断言，作为路由的匹配条件，对应 RouteDefinition 数组
+                - Path=/api/v1/**
+              filters:
+                - RewritePath=/api/v1/(?<segment>.*), /openapi/v1/$\{segment}
           x-forwarded:
             prefix-enabled: false # 避免 Swagger 重复带上额外的 /admin-api/system 前缀
           default-filters:
