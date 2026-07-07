@@ -30,6 +30,10 @@
     </dependency>
     <dependency>
       <groupId>cn.iocoder.cloud</groupId>
+      <artifactId>yudao-spring-boot-starter-excel</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>cn.iocoder.cloud</groupId>
       <artifactId>yudao-spring-boot-starter-test</artifactId>
       <scope>test</scope>
     </dependency>
