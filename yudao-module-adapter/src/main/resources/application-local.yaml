@@ -6,3 +6,15 @@ spring:
       discovery:
         server-addr: 127.0.0.1:18848 # Nacos 服务器地址（本地 docker-compose 中间件，见 docker/docker-compose.yml）
         namespace: dev # 命名空间，与 yudao-gateway 保持一致，便于服务发现互通
+
+--- #################### 数据库相关配置 ####################
+
+spring:
+  datasource:
+    dynamic: # 多数据源配置
+      primary: master
+      datasource:
+        master:
+          url: jdbc:mysql://127.0.0.1:23306/apiten_adapter?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true&rewriteBatchedStatements=true
+          username: root
+          password: apiten123
