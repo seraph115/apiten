@@ -13,6 +13,7 @@ import jakarta.annotation.Resource;
 import java.util.List;
 
 import static cn.iocoder.yudao.framework.test.core.util.AssertUtils.assertServiceException;
+import static cn.iocoder.yudao.module.adapter.enums.ErrorCodeConstants.DATA_SOURCE_NOT_EXISTS;
 import static cn.iocoder.yudao.module.adapter.enums.ErrorCodeConstants.DS_INTERFACE_NOT_EXISTS;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -93,5 +94,35 @@ class DsInterfaceServiceImplTest extends BaseDbUnitTest {
         q.setName("工商");
         PageResult<DsInterfaceDO> page = service.getDsInterfacePage(q);
         assertThat(page.getTotal()).isEqualTo(1);
+    }
+
+    @Test
+    void create_dataSourceNotExists_throws() {
+        // 不先造数据源，直接用一个不存在的 dataSourceId
+        assertServiceException(() -> service.createDsInterface(newReq("孤儿接口", 999999L)),
+                DATA_SOURCE_NOT_EXISTS);
+    }
+
+    @Test
+    void update_dataSourceNotExists_throws() {
+        Long dsId = insertDataSource();
+        Long id = service.createDsInterface(newReq("接口", dsId));
+        DsInterfaceSaveReqVO upd = newReq("改", 999999L); // 存在的接口 id + 不存在的数据源
+        upd.setId(id);
+        assertServiceException(() -> service.updateDsInterface(upd),
+                DATA_SOURCE_NOT_EXISTS);
+    }
+
+    @Test
+    void create_afterDelete_noDuplicateIfCode() {
+        Long dsId = insertDataSource();
+        Long id1 = service.createDsInterface(newReq("接口1", dsId));
+        Long id2 = service.createDsInterface(newReq("接口2", dsId));
+        String c2 = service.getDsInterface(id2).getIfCode();
+        service.deleteDsInterface(id2);
+        Long id3 = service.createDsInterface(newReq("接口3", dsId)); // 删除后再建
+        String c3 = service.getDsInterface(id3).getIfCode();
+        assertThat(c3).isNotEqualTo(c2);
+        assertThat(c3).matches("IF\\d{6}");
     }
 }
