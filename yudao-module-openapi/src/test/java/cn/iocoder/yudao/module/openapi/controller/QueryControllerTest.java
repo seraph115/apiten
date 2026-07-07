@@ -11,7 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class QueryControllerTest {
 
     private final MockMvc mvc = MockMvcBuilders
-            .standaloneSetup(new QueryController(new QueryOrchestrator())).build();
+            .standaloneSetup(new QueryController(new QueryOrchestrator(emptyObjectProvider()))).build();
 
     @Test
     void query_returnsUnifiedResponseWithFlowNo() throws Exception {
@@ -23,5 +23,14 @@ class QueryControllerTest {
                 .andExpect(jsonPath("$.productCode").value("P1001001"))
                 .andExpect(jsonPath("$.flowNo").isString())
                 .andExpect(jsonPath("$.data.mock").value(true));
+    }
+
+    private static <T> org.springframework.beans.factory.ObjectProvider<T> emptyObjectProvider() {
+        return new org.springframework.beans.factory.ObjectProvider<T>() {
+            @Override public T getObject(Object... args) { throw new UnsupportedOperationException(); }
+            @Override public T getIfAvailable() { return null; }
+            @Override public T getIfUnique() { return null; }
+            @Override public T getObject() { throw new UnsupportedOperationException(); }
+        };
     }
 }
