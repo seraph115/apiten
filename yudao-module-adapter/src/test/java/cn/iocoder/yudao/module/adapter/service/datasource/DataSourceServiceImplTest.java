@@ -79,4 +79,16 @@ class DataSourceServiceImplTest extends BaseDbUnitTest {
         assertThat(service.getDataSource(id1).getDsCode())
                 .isNotEqualTo(service.getDataSource(id2).getDsCode());
     }
+
+    @Test
+    void create_afterDelete_noDuplicateDsCode() {
+        Long id1 = service.createDataSource(newReq("源1"));
+        Long id2 = service.createDataSource(newReq("源2"));
+        service.deleteDataSource(id2);
+        Long id3 = service.createDataSource(newReq("源3")); // 删除后再建
+        String c1 = service.getDataSource(id1).getDsCode();
+        String c3 = service.getDataSource(id3).getDsCode();
+        assertThat(c3).isNotEqualTo(c1);
+        assertThat(c3).matches("DS\\d{6}");
+    }
 }

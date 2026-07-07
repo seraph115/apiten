@@ -33,5 +33,6 @@ CREATE TABLE IF NOT EXISTS "adapter_data_source" (
     "updater" varchar(64) DEFAULT '',
     "update_time" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "deleted" bit NOT NULL DEFAULT FALSE,
-    PRIMARY KEY ("id")
+    PRIMARY KEY ("id"),
+    CONSTRAINT "uk_adapter_data_source_ds_code" UNIQUE ("ds_code")
 ) COMMENT '数据源信息表';

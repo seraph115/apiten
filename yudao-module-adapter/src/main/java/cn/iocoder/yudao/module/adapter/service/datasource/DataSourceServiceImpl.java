@@ -8,9 +8,11 @@ import cn.iocoder.yudao.module.adapter.controller.admin.datasource.vo.DataSource
 import cn.iocoder.yudao.module.adapter.dal.dataobject.datasource.DataSourceDO;
 import cn.iocoder.yudao.module.adapter.dal.mysql.datasource.DataSourceMapper;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 import jakarta.annotation.Resource;
 import java.util.List;
+import java.util.UUID;
 
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static cn.iocoder.yudao.module.adapter.enums.ErrorCodeConstants.DATA_SOURCE_NOT_EXISTS;
@@ -23,11 +25,16 @@ public class DataSourceServiceImpl implements DataSourceService {
     private DataSourceMapper dataSourceMapper;
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public Long createDataSource(DataSourceSaveReqVO reqVO) {
         DataSourceDO ds = BeanUtils.toBean(reqVO, DataSourceDO.class);
         ds.setId(null);
-        ds.setDsCode(generateDsCode());
-        dataSourceMapper.insert(ds);
+        // ds_code 列 NOT NULL + 唯一，先写入临时唯一占位（32 位 UUID，正好落在 varchar(32) 内），
+        // 拿到自增 id 后再据 id 回填最终编码；整个过程在同一事务内，外部只可见最终编码
+        ds.setDsCode(UUID.randomUUID().toString().replace("-", ""));
+        dataSourceMapper.insert(ds);            // id 由 DB 自增分配
+        ds.setDsCode(String.format("DS%06d", ds.getId()));
+        dataSourceMapper.updateById(ds);        // 回填编码
         return ds.getId();
     }
 
@@ -67,10 +74,5 @@ public class DataSourceServiceImpl implements DataSourceService {
             throw exception(DATA_SOURCE_NOT_EXISTS);
         }
         return ds;
-    }
-
-    private String generateDsCode() {
-        long next = dataSourceMapper.selectMaxId() + 1;
-        return String.format("DS%06d", next);
     }
 }

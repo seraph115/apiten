@@ -22,10 +22,4 @@ public interface DataSourceMapper extends BaseMapperX<DataSourceDO> {
     default DataSourceDO selectByDsCode(String dsCode) {
         return selectOne(DataSourceDO::getDsCode, dsCode);
     }
-
-    default Long selectMaxId() {
-        DataSourceDO one = selectOne(new LambdaQueryWrapperX<DataSourceDO>()
-                .orderByDesc(DataSourceDO::getId).last("LIMIT 1"));
-        return one == null ? 0L : one.getId();
-    }
 }
