@@ -23,6 +23,7 @@
         <module>apiten-common</module>
         <module>yudao-module-openapi</module>
         <module>yudao-module-adapter</module>
+        <module>yudao-module-flow</module>
     </modules>
 
     <name>${project.artifactId}</name>

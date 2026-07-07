@@ -11,7 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class QueryControllerTest {
 
     private final MockMvc mvc = MockMvcBuilders
-            .standaloneSetup(new QueryController(new QueryOrchestrator(emptyObjectProvider()))).build();
+            .standaloneSetup(new QueryController(new QueryOrchestrator(emptyObjectProvider(), emptyObjectProvider()))).build();
 
     @Test
     void query_returnsUnifiedResponseWithFlowNo() throws Exception {
