@@ -1,0 +1,8 @@
+--- #################### 注册中心相关配置（P0 暂未启用，见 application.yaml） ####################
+
+spring:
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848 # Nacos 服务器地址
+        namespace: dev # 命名空间，与 yudao-gateway 保持一致，便于服务发现互通

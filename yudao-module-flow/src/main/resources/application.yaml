@@ -1,0 +1,30 @@
+server:
+  port: 48092
+spring:
+  application:
+    name: flow-server
+  profiles:
+    active: local
+  threads:
+    virtual:
+      enabled: true
+  config:
+    import:
+      - optional:classpath:application-${spring.profiles.active}.yaml # 加载【本地】配置
+  kafka:
+    bootstrap-servers: localhost:9092 # 本地 docker-compose 中间件；@EmbeddedKafka 单测会通过 spring.kafka.bootstrap-servers 覆盖此值
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      group-id: flow-server
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+  cloud:
+    nacos:
+      discovery:
+        # P0：flow-server 仅作为 Kafka 消费者落库骨架，不对外提供 HTTP 接口、不接入网关路由，
+        # 暂不注册到 Nacos（P1+ 若需要被其他服务发现/管理端查询时再开启）。
+        # 同时避免 @SpringBootTest 在没有本地 Nacos 中间件时因自动注册而失败/阻塞，保证单测离线可跑。
+        enabled: false

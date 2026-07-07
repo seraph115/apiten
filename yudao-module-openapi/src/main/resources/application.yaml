@@ -1,0 +1,24 @@
+server:
+  port: 48090
+spring:
+  application:
+    name: openapi-server
+  profiles:
+    active: local
+  threads:
+    virtual:
+      enabled: true
+  config:
+    import:
+      - optional:classpath:application-${spring.profiles.active}.yaml # 加载【本地】配置
+  kafka:
+    bootstrap-servers: 127.0.0.1:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        # 流水事件尽力而为，限制 producer 阻塞与投递超时，避免 Kafka 不可用时拖慢查询响应。
+        max.block.ms: 300
+        delivery.timeout.ms: 2000
+        request.timeout.ms: 1500
+        retries: 0
