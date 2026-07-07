@@ -1,6 +1,6 @@
 # 征信数据服务 API 平台（API-TEN）产品需求设计（PRD）
 
-- 文档版本：v1.2（v1.1 移除旧系统迁移、新增技术架构；v1.2 基座框架定为 yudao-cloud、MQ 定为 Kafka）
+- 文档版本：v1.3（v1.1 移除旧系统迁移、新增技术架构；v1.2 基座框架定为 yudao-cloud、MQ 定为 Kafka；v1.3 新增总体架构图、技术架构图、数据流向图、业务流程图）
 - 编写日期：2026-07-07
 - 范围口径：全量详细设计（一期 + 二期）
 - 参考资料：《2026-07-07-新API系统核心功能需求文档.md》、API-TEN 演示原型截图、旧系统（CISP/EDH）能力盘点
@@ -86,12 +86,73 @@
                     上游数据源（供应商 N 家）
 ```
 
+系统总体架构图：
+
+```mermaid
+flowchart TB
+    client["机构客户端<br/>同步 / 异步 / 批量<br/>AK/SK + 签名"]
+    subgraph mgmt["管理面 · 运营后台"]
+        m1["系统管理 / 数据源 / 产品 / 机构 / 账户"]
+        m2["路由 / 流水 / 参数 / 报表 / 监控告警 / 审计"]
+    end
+    subgraph ctrl["控制面 · 策略与规则引擎"]
+        c1["动态路由引擎<br/>价格/质量/时延/配额多因子评分"]
+        c2["切换链编排器"]
+        c3["计费引擎"]
+        c4["限流限额引擎"]
+        c5["指标采集器"]
+    end
+    subgraph dp["数据面 · 执行层"]
+        g["API 网关<br/>认证鉴权/参数校验/幂等/雪花ID"]
+        o["调用编排"]
+        a["数据源适配层 · 统一 Provider<br/>HTTP · RPC · DB · 文件"]
+        t["异步任务层<br/>异步申请/批量任务/回调"]
+    end
+    up["上游数据源 · 供应商 N 家"]
+
+    client --> g --> o --> a --> up
+    mgmt -- "配置发布 · 版本化快照" --> ctrl
+    ctrl -- "路由决策 / 计费 / 限流判定" --> dp
+    dp -- "调用指标上报" --> c5
+    o -.-> t
+```
+
 ### 3.2 核心设计决定
 
 1. **配置与执行分离**：管理面所有运行时配置（路由、计费模板、应答码映射、分流权重、选源策略）修改后处于"草稿"态，经"发布"动作生成**带版本号的配置快照**，推送到控制面/数据面本地缓存，秒级生效；调用链路零数据库依赖；支持一键回滚到任意历史版本；历史流水记录当时命中的配置版本号，可追溯。
 2. **一条流水贯穿全链路**：网关入口用雪花 ID 生成全局唯一机构流水号；数据源流水（1:N）、计费流水（1:1）、财务流水全部挂接在该流水号下；任何一次调用可通过流水号还原认证结果、路由决策明细、切换链各节点结果、计费结果。
 3. **动态路由是控制面一等公民**：指标采集器实时汇聚各数据源的成功率、查得率、P95 时延、剩余配额、单价；路由引擎按可配置权重策略打分选源；运营可人工锁定覆盖；每次决策打分明细留痕、可解释。
 4. **对外三种模式 + 门户**：同步查询、异步申请（回调/轮询取结果）、批量文件任务；二期补开放门户与多语言 SDK。
+
+### 3.3 数据流向图
+
+四条主要数据流：调用流（实时同步）、流水流（Kafka 异步）、账务流（强事务）、配置流（版本化下发）。
+
+```mermaid
+flowchart LR
+    req["机构请求"] --> gw["yudao-gateway<br/>鉴权/限流/雪花ID"]
+    gw --> op["openapi<br/>路由决策/编排"]
+    op --> ad["adapter<br/>参数与应答码映射"]
+    ad --> up["上游数据源"]
+    up --> ad --> op --> resp["统一 JSON 响应"]
+
+    op -- "扣费 · OpenFeign 同步" --> bill["billing 计费引擎"]
+    bill --> adb[("账务库<br/>余额/计费/财务流水")]
+
+    op -- "流水事件" --> kafka[("Kafka")]
+    kafka --> fl["flow 流水服务"]
+    fl --> fdb[("流水库<br/>按月分表/归档")]
+
+    ad -- "调用指标" --> rt["route<br/>指标聚合/选源打分"]
+    cfg["管理后台配置变更"] --> rt
+    rt -- "配置版本快照" --> cache[("Nacos / Redis")]
+    cache -- "热更新" --> op
+    cache -- "热更新" --> ad
+
+    fdb --> job["report 批任务"]
+    adb --> job
+    job --> rpt[("日/月账单 · 成本 · 对账")]
+```
 
 ---
 
@@ -570,6 +631,31 @@ score = w1·价格分 + w2·质量分 + w3·时延分 + w4·配额分
 ⑩ 异步落盘（机构流水+数据源流水+决策明细，MQ 削峰）
 ```
 
+业务流程图：
+
+```mermaid
+flowchart TD
+    s(["机构发起 API 请求"]) --> auth{"五重校验<br/>签名/IP/账号/机构/产品"}
+    auth -- "失败" --> e1["返回 1xxx 错误码"]
+    auth -- "通过" --> pre{"前置检查<br/>余额/调用量/并发"}
+    pre -- "超限或不足" --> e2["返回 2xxx 错误码"]
+    pre -- "通过" --> idem{"幂等检查 bizSeqNo"}
+    idem -- "命中" --> r0["返回首次结果 · 不重复计费"]
+    idem -- "未命中" --> fid["雪花 ID 生成机构流水号"]
+    fid --> route["路由决策<br/>静态匹配 → 动态选源打分"]
+    route --> call["适配层调用上游<br/>入参映射→调用→出参/应答码映射"]
+    call --> ok{"调用成功?"}
+    ok -- "触发切换" --> next{"切换链有下一节点?"}
+    next -- "是 · 未超最大切换次数" --> call
+    next -- "否" --> fb["兜底响应 · 3003"]
+    ok -- "成功/无数据" --> chg{"计费判定<br/>模板+计费应答码"}
+    fb --> chg
+    chg -- "计费" --> deduct["余额扣减 + 计费流水<br/>失败自动冲正"]
+    chg -- "不计费" --> resp["统一响应组装返回"]
+    deduct --> resp
+    resp --> log["异步落盘：机构流水+数据源流水+决策明细 → Kafka"]
+```
+
 ### 8.5 计费与对账流程
 
 1. 调用结束按三级配置判定计费 → 2. 预付费扣余额/后付费记账 → 3. 生成计费明细与财务流水 → 4. 日终日账单、月终月账单 → 5. 收入成本核对（机构/产品/数据源）→ 6. 差异走合并对账与账务调整（审批+冲正）。
@@ -701,6 +787,55 @@ score = w1·价格分 + w2·质量分 + w3·时延分 + w4·配额分
 | yudao-module-report | 管理面 | 日/月账单、成本统计、对账、归档、邮件报表批任务 | XXL-Job，幂等可重跑 |
 
 调用关系（同步主链路）：yudao-gateway → openapi → adapter →（上游数据源）；openapi → billing（扣费，OpenFeign 同步 + 幂等）。流水落库与通知推送经 yudao MQ 抽象层走 **Kafka** 异步。
+
+技术架构图：
+
+```mermaid
+flowchart TB
+    subgraph clients["接入方"]
+        orgc["机构系统<br/>HTTP/JSON + AK/SK 签名"]
+        admin["运营/技术/财务人员<br/>yudao-ui-admin-vue3"]
+    end
+
+    subgraph access["接入层"]
+        gw["yudao-gateway · Spring Cloud Gateway<br/>签名/IP/防重放 · Sentinel 限流 · 雪花ID · 幂等"]
+    end
+
+    subgraph biz["微服务层 · Spring Boot 3 + Java 21 虚拟线程 + Spring Cloud Alibaba"]
+        op["module-openapi<br/>调用编排/路由执行"]
+        ad["module-adapter<br/>统一 Provider 适配"]
+        rt["module-route<br/>路由策略/配置发布"]
+        bl["module-billing<br/>计费/账务"]
+        fl["module-flow<br/>流水落库/查询"]
+        sys["module-system 复用<br/>RBAC/审计/字典"]
+        aa["module-apiadmin<br/>业务配置后台"]
+        rp["module-report<br/>账单/对账批任务"]
+    end
+
+    subgraph mw["中间件层"]
+        nacos["Nacos<br/>注册+配置"]
+        redis["Redis/Redisson<br/>缓存/限流/幂等"]
+        kafka["Kafka<br/>流水削峰/异步任务"]
+        mysql["MySQL 8<br/>ShardingSphere 分表"]
+        xxl["XXL-Job<br/>调度"]
+        obs["SkyWalking<br/>Prometheus/Grafana"]
+    end
+
+    up["上游数据源 · HTTP 一期 / RPC · DB · 文件 二期"]
+
+    orgc --> gw --> op --> ad --> up
+    admin --> sys
+    admin --> aa
+    op -- "OpenFeign 扣费" --> bl
+    op -- "流水事件" --> kafka --> fl
+    aa --> rt -- "配置快照" --> nacos
+    nacos -.-> op
+    nacos -.-> ad
+    xxl --> rp
+    biz --- mysql
+    biz --- redis
+    biz -.-> obs
+```
 
 ### 12.3 关键技术决策
 
