@@ -43,3 +43,20 @@ CREATE TABLE `product_function` (
   UNIQUE KEY `uk_func_code` (`func_code`),
   KEY `idx_product_id` (`product_id`)
 ) ENGINE=InnoDB CHARACTER SET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='产品功能表';
+
+CREATE TABLE `product_func_interface` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '编号',
+  `product_function_id` bigint NOT NULL COMMENT '产品功能ID',
+  `ds_interface_id` bigint NOT NULL COMMENT '数据源接口ID（松耦合引用 adapter）',
+  `ds_interface_code` varchar(32) NULL DEFAULT '' COMMENT '数据源接口编码快照',
+  `priority` int NOT NULL DEFAULT 0 COMMENT '优先级（越小越优先）',
+  `is_default` bit(1) NOT NULL DEFAULT b'0' COMMENT '是否默认数据源',
+  `status` tinyint NOT NULL DEFAULT 0 COMMENT '状态：0启用 1停用',
+  `creator` varchar(64) NULL DEFAULT '' COMMENT '创建者',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updater` varchar(64) NULL DEFAULT '' COMMENT '更新者',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted` bit(1) NOT NULL DEFAULT b'0' COMMENT '是否删除',
+  PRIMARY KEY (`id`) USING BTREE,
+  KEY `idx_func_id` (`product_function_id`)
+) ENGINE=InnoDB CHARACTER SET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='产品功能-数据源接口绑定表';
