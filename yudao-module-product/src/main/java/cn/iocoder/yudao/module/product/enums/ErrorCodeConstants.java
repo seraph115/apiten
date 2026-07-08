@@ -12,4 +12,7 @@ public interface ErrorCodeConstants {
 
     // ========== 功能-数据源接口绑定 1-021-003-xxx ==========
     ErrorCode FUNC_INTERFACE_NOT_EXISTS = new ErrorCode(1_021_003_000, "功能接口绑定不存在");
+
+    // ========== 产品参数 1-021-004-xxx ==========
+    ErrorCode PRODUCT_PARAM_NOT_EXISTS = new ErrorCode(1_021_004_000, "产品参数不存在");
 }
