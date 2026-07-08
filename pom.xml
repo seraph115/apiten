@@ -24,6 +24,7 @@
         <module>yudao-module-openapi</module>
         <module>yudao-module-adapter</module>
         <module>yudao-module-flow</module>
+        <module>yudao-module-product</module>
     </modules>
 
     <name>${project.artifactId}</name>
