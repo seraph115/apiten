@@ -292,6 +292,10 @@ knife4j:
         service-name: im-server
         url: /admin-api/im/v3/api-docs
 
+apiten:
+  gateway:
+    worker-id: ${APITEN_GATEWAY_WORKER_ID:1} # 雪花 ID 工作节点号，多实例需各不相同
+
 --- #################### 芋道相关配置 ####################
 
 yudao:
