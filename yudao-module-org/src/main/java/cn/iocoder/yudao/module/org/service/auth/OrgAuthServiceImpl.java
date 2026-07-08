@@ -50,7 +50,10 @@ public class OrgAuthServiceImpl implements OrgAuthService {
         String sk = AesCipher.decrypt(account.getSecretKeyCipher(), skSecret);
         String expect = CryptoSignatures.hmacSha256Hex(sk,
                 CryptoSignatures.buildSignPayload(req.getAppKey(), req.getTimestamp(), req.getNonce(), req.getBodyDigest()));
-        if (!expect.equalsIgnoreCase(req.getSignature())) {
+        String provided = req.getSignature();
+        if (provided == null || !java.security.MessageDigest.isEqual(
+                expect.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                provided.toLowerCase().getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
             return OrgAuthVerifyRespDTO.fail(PlatformErrorCode.SIGN_ERROR);
         }
         // 4. nonce 去重（重放）——放在签名之后，避免未过签名的请求污染 nonce 存储

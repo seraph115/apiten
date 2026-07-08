@@ -153,6 +153,7 @@ public class OpenApiAuthFilter implements GlobalFilter, Ordered {
             HttpHeaders h = new HttpHeaders();
             h.addAll(delegate.getHeaders());
             headerCustomizer.accept(h);
+            h.remove(HttpHeaders.TRANSFER_ENCODING);
             h.setContentLength(body.length);
             this.headers = h;
         }
