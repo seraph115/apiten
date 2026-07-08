@@ -1,0 +1,18 @@
+server:
+  port: 48094
+spring:
+  application:
+    name: org-server
+  profiles:
+    active: local
+  threads:
+    virtual:
+      enabled: true
+  config:
+    import:
+      - optional:classpath:application-${spring.profiles.active}.yaml # 加载【本地】配置
+
+apiten:
+  org:
+    sk-secret: ${APITEN_ORG_SK_SECRET:apiten-default-dev-key} # SK 的 AES 加密密钥，生产必须用环境变量覆盖
+    timestamp-window-ms: 300000 # 签名时间戳窗口 ±5 分钟
