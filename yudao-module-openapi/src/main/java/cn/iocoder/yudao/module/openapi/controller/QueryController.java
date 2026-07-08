@@ -15,7 +15,8 @@ public class QueryController {
 
     @PostMapping("/{productCode}/query")
     public ApiResponse<Map<String, Object>> query(@PathVariable String productCode,
-            @RequestBody Map<String, Object> params) {
-        return orchestrator.query(productCode, params);
+            @RequestBody Map<String, Object> params,
+            @RequestHeader(value = "X-Flow-No", required = false) String flowNo) {
+        return orchestrator.query(productCode, params, flowNo);
     }
 }

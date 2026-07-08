@@ -28,12 +28,17 @@ public class QueryOrchestrator {
     }
 
     public ApiResponse<Map<String, Object>> query(String productCode, Map<String, Object> params) {
+        return query(productCode, params, null);
+    }
+
+    public ApiResponse<Map<String, Object>> query(String productCode, Map<String, Object> params, String flowNo) {
+        String usedFlowNo = (flowNo != null && !flowNo.isBlank()) ? flowNo : idGen.nextIdStr();
         long start = System.currentTimeMillis();
         AdapterClient client = adapterClientProvider.getIfAvailable();
         ApiResponse<Map<String, Object>> resp;
         if (client == null) { // 单测/降级分支
             Map<String, Object> data = Map.of("mock", true, "echo", params);
-            resp = ApiResponse.of(idGen.nextIdStr(), productCode,
+            resp = ApiResponse.of(usedFlowNo, productCode,
                     PlatformErrorCode.SUCCESS, true, System.currentTimeMillis() - start, data);
         } else {
             ProviderRequest req = new ProviderRequest();
@@ -42,7 +47,7 @@ public class QueryOrchestrator {
             ProviderResponse providerResp = client.invoke(req);
             PlatformErrorCode ec = "0000".equals(providerResp.getPlatformCode())
                     ? PlatformErrorCode.SUCCESS : PlatformErrorCode.UPSTREAM_ERROR;
-            resp = ApiResponse.of(idGen.nextIdStr(), productCode, ec,
+            resp = ApiResponse.of(usedFlowNo, productCode, ec,
                     ec == PlatformErrorCode.SUCCESS, System.currentTimeMillis() - start, providerResp.getData());
         }
         sendFlowEvent(resp, productCode, start);
