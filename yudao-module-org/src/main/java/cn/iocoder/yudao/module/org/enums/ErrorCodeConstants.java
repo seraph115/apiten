@@ -6,4 +6,7 @@ import cn.iocoder.yudao.framework.common.exception.ErrorCode;
 public interface ErrorCodeConstants {
     // ========== 机构信息 1-022-001-xxx ==========
     ErrorCode ORG_NOT_EXISTS = new ErrorCode(1_022_001_000, "机构不存在");
+
+    // ========== 机构账号 1-022-002-xxx ==========
+    ErrorCode ORG_ACCOUNT_NOT_EXISTS = new ErrorCode(1_022_002_000, "机构账号不存在");
 }
