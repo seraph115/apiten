@@ -15,8 +15,9 @@ import java.util.Map;
  * 调用过程中不再 clone/覆盖 requestFactory —— 这是为了兼容测试用
  * {@link org.springframework.test.web.client.MockRestServiceServer#bindTo(RestClient.Builder)}：
  * mock 只在“注入的 builder 构建出的 client”上生效，若在 call() 内重新 build 或覆盖
- * requestFactory 会解绑 mock。按接口 timeoutMs 动态设置超时因此本期未实现，
- * 超时兜底值由 config 层的 RestClient.Builder 统一预置。</p>
+ * requestFactory 会解绑 mock。因此按接口 {@code timeoutMs} 的动态超时本期未实现，
+ * 生产超时由 {@link cn.iocoder.yudao.module.adapter.config.AdapterHttpConfig} 在 config 层
+ * 的 {@link RestClient.Builder} 上预置的默认连接/读取超时兜底，避免上游无响应时无界阻塞。</p>
  */
 @Component
 @Slf4j
@@ -28,6 +29,11 @@ public class HttpInvoker {
         this.client = adapterRestClientBuilder.build();
     }
 
+    /**
+     * @param timeoutMs 按接口的期望超时（毫秒）。<b>当前未在请求层生效</b>：生产超时由
+     *                  {@link cn.iocoder.yudao.module.adapter.config.AdapterHttpConfig} 的
+     *                  默认连接/读取超时兜底；按接口动态超时留待后续（保留此参数以便平滑接入）。
+     */
     public HttpCallResult call(String method, String url, Map<String, String> headers,
             String body, int timeoutMs, int retryCount) {
         HttpCallResult result = new HttpCallResult();
