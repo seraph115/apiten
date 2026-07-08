@@ -18,4 +18,7 @@ public interface ErrorCodeConstants {
 
     // ========== 数据源接口参数 1-020-004-xxx ==========
     ErrorCode DS_INTERFACE_PARAM_NOT_EXISTS = new ErrorCode(1_020_004_000, "数据源接口参数不存在");
+
+    // ========== 适配引擎 1-020-005-xxx ==========
+    ErrorCode ADAPTER_ENGINE_INVOKE_FAILED = new ErrorCode(1_020_005_000, "适配调用失败");
 }
