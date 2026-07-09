@@ -26,6 +26,7 @@
         <module>yudao-module-flow</module>
         <module>yudao-module-product</module>
         <module>yudao-module-org</module>
+        <module>yudao-module-route</module>
     </modules>
 
     <name>${project.artifactId}</name>
