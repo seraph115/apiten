@@ -14,6 +14,7 @@ public enum PlatformErrorCode {
     BALANCE_INSUFFICIENT("2101", "余额不足"),
     UPSTREAM_ERROR("3001", "数据源异常"),
     CHAIN_EXHAUSTED("3003", "切换链耗尽"),
+    ROUTE_NO_TARGET("3005", "未匹配到可用数据源接口"),
     SYSTEM_ERROR("3999", "系统异常");
 
     private final String code;
