@@ -1,0 +1,13 @@
+server:
+  port: 48095
+spring:
+  application:
+    name: route-server
+  profiles:
+    active: local
+  threads:
+    virtual:
+      enabled: true
+  config:
+    import:
+      - optional:classpath:application-${spring.profiles.active}.yaml # 加载【本地】配置
